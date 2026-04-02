@@ -1,0 +1,1368 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Claude Code v2.1.88 - 项目架构图</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #242838;
+    --border: #2e3348;
+    --text: #e2e8f0;
+    --text-dim: #8892b0;
+    --accent: #7c3aed;
+    --accent2: #2563eb;
+    --green: #10b981;
+    --orange: #f59e0b;
+    --pink: #ec4899;
+    --cyan: #06b6d4;
+    --red: #ef4444;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  .header {
+    text-align: center;
+    padding: 40px 20px 20px;
+    background: linear-gradient(135deg, rgba(124,58,237,0.15), rgba(37,99,235,0.15));
+    border-bottom: 1px solid var(--border);
+  }
+  .header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.5px; }
+  .header h1 span { color: var(--accent); }
+  .header p { color: var(--text-dim); margin-top: 8px; font-size: 0.95rem; }
+  .badge {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin: 4px 4px;
+  }
+  .badge-purple { background: rgba(124,58,237,0.2); color: #a78bfa; border: 1px solid rgba(124,58,237,0.3); }
+  .badge-blue { background: rgba(37,99,235,0.2); color: #60a5fa; border: 1px solid rgba(37,99,235,0.3); }
+  .badge-green { background: rgba(16,185,129,0.2); color: #34d399; border: 1px solid rgba(16,185,129,0.3); }
+
+  .tabs {
+    display: flex;
+    gap: 0;
+    justify-content: center;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    flex-wrap: wrap;
+  }
+  .tab {
+    padding: 12px 24px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text); background: rgba(255,255,255,0.03); }
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .content { max-width: 1400px; margin: 0 auto; padding: 30px 20px; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+  .card:hover { border-color: rgba(124,58,237,0.4); }
+  .card h3 {
+    font-size: 1.1rem;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card h3 .icon { font-size: 1.3rem; }
+  .card p, .card li { color: var(--text-dim); font-size: 0.9rem; }
+  .card ul { padding-left: 20px; }
+  .card li { margin: 4px 0; }
+
+  .grid { display: grid; gap: 20px; }
+  .grid-2 { grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); }
+  .grid-3 { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); }
+
+  .flow-diagram {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 30px 0;
+  }
+  .flow-box {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 28px;
+    text-align: center;
+    min-width: 280px;
+    position: relative;
+    transition: all 0.2s;
+    cursor: default;
+  }
+  .flow-box:hover { border-color: var(--accent); transform: scale(1.02); }
+  .flow-box .title { font-weight: 600; font-size: 0.95rem; }
+  .flow-box .sub { color: var(--text-dim); font-size: 0.8rem; margin-top: 4px; }
+  .flow-arrow {
+    width: 2px;
+    height: 30px;
+    background: var(--border);
+    position: relative;
+  }
+  .flow-arrow::after {
+    content: '▼';
+    position: absolute;
+    bottom: -8px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--border);
+    font-size: 10px;
+  }
+  .flow-branch {
+    display: flex;
+    gap: 20px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .flow-branch .flow-box { min-width: 200px; }
+
+  .arch-svg-container {
+    width: 100%;
+    overflow-x: auto;
+    padding: 20px 0;
+  }
+  .arch-svg-container svg {
+    display: block;
+    margin: 0 auto;
+  }
+
+  .tree-root { padding: 8px 0; }
+  .tree-node { margin: 0; }
+  .tree-row {
+    display: flex;
+    align-items: center;
+    padding: 5px 12px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    cursor: default;
+    gap: 0;
+  }
+  .tree-row:hover { background: rgba(255,255,255,0.04); }
+  .tree-indent {
+    display: inline-flex;
+    align-items: center;
+    width: 24px;
+    flex-shrink: 0;
+    color: var(--border);
+    font-size: 0.7rem;
+    user-select: none;
+  }
+  .tree-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    cursor: pointer;
+    border-radius: 4px;
+    color: var(--text-dim);
+    font-size: 0.65rem;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .tree-toggle:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+  .tree-toggle.open { transform: rotate(90deg); }
+  .tree-toggle.leaf { visibility: hidden; }
+  .tree-icon {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.9rem;
+    margin-right: 6px;
+  }
+  .tree-name {
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+  .tree-name.is-dir { color: var(--cyan); font-weight: 600; }
+  .tree-name.is-file { color: #cbd5e1; }
+  .tree-desc {
+    margin-left: 12px;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    opacity: 0.7;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .tree-badge {
+    display: inline-block;
+    padding: 1px 7px;
+    border-radius: 8px;
+    font-size: 0.65rem;
+    font-weight: 600;
+    margin-left: 8px;
+    flex-shrink: 0;
+  }
+  .tree-badge-purple { background: rgba(124,58,237,0.15); color: #a78bfa; }
+  .tree-badge-green { background: rgba(16,185,129,0.15); color: #34d399; }
+  .tree-badge-blue { background: rgba(37,99,235,0.15); color: #60a5fa; }
+  .tree-badge-orange { background: rgba(245,158,11,0.15); color: #fbbf24; }
+  .tree-badge-pink { background: rgba(236,72,153,0.15); color: #f472b6; }
+  .tree-badge-red { background: rgba(239,68,68,0.15); color: #f87171; }
+  .tree-badge-cyan { background: rgba(6,182,212,0.15); color: #22d3ee; }
+  .tree-children { overflow: hidden; }
+  .tree-children.collapsed { display: none; }
+  .tree-section-header {
+    padding: 10px 16px 6px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-dim);
+    opacity: 0.5;
+    margin-top: 8px;
+  }
+  .tree-separator {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 12px;
+    opacity: 0.4;
+  }
+
+  .tool-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 10px;
+  }
+  .tool-item {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    transition: all 0.2s;
+    cursor: default;
+  }
+  .tool-item:hover { border-color: var(--green); background: rgba(16,185,129,0.05); }
+  .tool-item .name { font-weight: 600; color: var(--green); }
+  .tool-item .cat { color: var(--text-dim); font-size: 0.75rem; margin-top: 2px; }
+
+  .legend {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 0.82rem;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-dot {
+    width: 12px; height: 12px;
+    border-radius: 3px;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.85rem;
+  }
+  th { text-align: left; padding: 10px 14px; background: var(--surface2); color: var(--text); border-bottom: 1px solid var(--border); }
+  td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text-dim); }
+  tr:hover td { background: rgba(124,58,237,0.05); }
+  code {
+    background: var(--surface2);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Cascadia Code', 'Fira Code', monospace;
+    font-size: 0.82rem;
+    color: var(--cyan);
+  }
+  .highlight { color: var(--accent); font-weight: 600; }
+
+  .section-title {
+    font-size: 1.3rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-title .icon { margin-right: 8px; }
+
+  .layer-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin: 20px 0;
+  }
+  .layer {
+    display: flex;
+    align-items: center;
+    border-radius: 8px;
+    padding: 14px 20px;
+    font-weight: 500;
+    font-size: 0.9rem;
+    gap: 12px;
+    transition: transform 0.2s;
+  }
+  .layer:hover { transform: translateX(4px); }
+  .layer-label {
+    min-width: 120px;
+    font-weight: 700;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .layer-content { flex: 1; font-size: 0.85rem; }
+  .l1 { background: rgba(124,58,237,0.15); border: 1px solid rgba(124,58,237,0.3); }
+  .l1 .layer-label { color: #a78bfa; }
+  .l2 { background: rgba(37,99,235,0.15); border: 1px solid rgba(37,99,235,0.3); }
+  .l2 .layer-label { color: #60a5fa; }
+  .l3 { background: rgba(6,182,212,0.15); border: 1px solid rgba(6,182,212,0.3); }
+  .l3 .layer-label { color: #22d3ee; }
+  .l4 { background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.3); }
+  .l4 .layer-label { color: #34d399; }
+  .l5 { background: rgba(245,158,11,0.15); border: 1px solid rgba(245,158,11,0.3); }
+  .l5 .layer-label { color: #fbbf24; }
+  .l6 { background: rgba(239,68,68,0.15); border: 1px solid rgba(239,68,68,0.3); }
+  .l6 .layer-label { color: #f87171; }
+
+  .dep-arrow { color: var(--accent); font-weight: bold; margin: 0 4px; }
+
+  @media (max-width: 768px) {
+    .grid-2, .grid-3 { grid-template-columns: 1fr; }
+    .flow-branch { flex-direction: column; align-items: center; }
+    .tab { padding: 10px 14px; font-size: 0.82rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🔍 <span>Claude Code</span> v2.1.88 架构分析</h1>
+  <p>从 @anthropic-ai/claude-code npm 包的 source map 还原的 TypeScript 源码研究</p>
+  <div style="margin-top: 12px;">
+    <span class="badge badge-purple">~1884 TS/TSX 文件</span>
+    <span class="badge badge-blue">Ink + React 终端 UI</span>
+    <span class="badge badge-green">Bun 打包构建</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showPanel('overview')">总体架构</button>
+  <button class="tab" onclick="showPanel('startup')">启动流程</button>
+  <button class="tab" onclick="showPanel('layers')">分层设计</button>
+  <button class="tab" onclick="showPanel('tools')">工具系统</button>
+  <button class="tab" onclick="showPanel('commands')">命令系统</button>
+  <button class="tab" onclick="showPanel('services')">服务层</button>
+  <button class="tab" onclick="showPanel('ui')">UI 与状态</button>
+  <button class="tab" onclick="showPanel('tree')">目录树</button>
+</div>
+
+<div class="content">
+
+<!-- ==================== 总体架构 ==================== -->
+<div class="panel active" id="overview">
+  <h2 class="section-title">📐 总体架构概览</h2>
+
+  <div class="card">
+    <h3><span class="icon">🏗️</span> 仓库结构</h3>
+    <p>本仓库是对 <code>@anthropic-ai/claude-code</code> npm 包 v2.1.88 的 source map 还原，<strong>非官方可构建工程</strong>。无 <code>tsconfig.json</code>、无测试、无构建脚本。</p>
+    <br>
+    <table>
+      <tr><th>目录</th><th>用途</th></tr>
+      <tr><td><code>package/</code></td><td>npm 发布包快照：<code>cli.js</code>（打包产物）、<code>package.json</code>、<code>LICENSE.md</code>、<code>vendor/ripgrep/</code></td></tr>
+      <tr><td><code>restored-src/src/</code></td><td>从 <code>cli.js.map</code> 还原的 ~1884 个 TS/TSX 源码文件，<strong>仅供阅读研究</strong></td></tr>
+    </table>
+  </div>
+
+  <h3 style="margin: 24px 0 16px; font-size: 1.1rem;">🧱 分层架构图（自顶向下）</h3>
+  <div class="layer-stack">
+    <div class="layer l1">
+      <div class="layer-label">入口层</div>
+      <div class="layer-content">
+        <code>entrypoints/cli.tsx</code> → <code>main.tsx</code> → Commander CLI 解析 → 交互 / 非交互分支
+      </div>
+    </div>
+    <div class="layer l2">
+      <div class="layer-label">界面层</div>
+      <div class="layer-content">
+        <code>screens/REPL.tsx</code> · <code>components/</code> · <code>ink/</code>（魔改版 Ink 终端 UI 框架）· React + 自定义 reconciler
+      </div>
+    </div>
+    <div class="layer l3">
+      <div class="layer-label">状态层</div>
+      <div class="layer-content">
+        <code>state/AppStateStore</code>（React 侧）· <code>bootstrap/state.ts</code>（进程级全局）· <code>context/</code> React Contexts
+      </div>
+    </div>
+    <div class="layer l4">
+      <div class="layer-label">业务逻辑层</div>
+      <div class="layer-content">
+        <code>tools/</code> 40+ 工具 · <code>commands/</code> 80+ 命令 · <code>hooks/</code> · <code>skills/</code> · <code>plugins/</code>
+      </div>
+    </div>
+    <div class="layer l5">
+      <div class="layer-label">服务层</div>
+      <div class="layer-content">
+        <code>services/api/</code> 模型调用 · <code>services/mcp/</code> MCP 协议 · <code>services/oauth/</code> · <code>services/analytics/</code> · <code>services/compact/</code>
+      </div>
+    </div>
+    <div class="layer l6">
+      <div class="layer-label">基础设施层</div>
+      <div class="layer-content">
+        <code>utils/</code> 564 文件：权限、设置、Git、Shell、模型、遥测、沙箱、安全存储、Swarm 多会话
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-3" style="margin-top: 24px;">
+    <div class="card">
+      <h3><span class="icon">⚙️</span> 技术栈</h3>
+      <ul>
+        <li><strong>运行时</strong>：Node.js ≥18（Bun 打包）</li>
+        <li><strong>语言</strong>：TypeScript + TSX</li>
+        <li><strong>UI 框架</strong>：Ink（魔改内嵌版）+ React</li>
+        <li><strong>CLI 解析</strong>：Commander.js</li>
+        <li><strong>AI SDK</strong>：@anthropic-ai/sdk</li>
+        <li><strong>MCP</strong>：@modelcontextprotocol/sdk</li>
+        <li><strong>Schema</strong>：Zod</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">🔑</span> 核心设计理念</h3>
+      <ul>
+        <li><strong>工具驱动</strong>：AI 通过 Tool Use 与系统交互</li>
+        <li><strong>权限分层</strong>：deny → ask → allow 三级规则</li>
+        <li><strong>延迟加载</strong>：<code>feature()</code> + <code>require()</code> 条件裁剪</li>
+        <li><strong>MCP 扩展</strong>：通过 MCP 协议集成外部工具</li>
+        <li><strong>插件化</strong>：命令/工具/技能均可插件扩展</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">📊</span> 规模统计</h3>
+      <ul>
+        <li>源码文件：<strong>~1884</strong> 个 .ts/.tsx</li>
+        <li>内置工具：<strong>40+</strong> 个 Tool</li>
+        <li>斜杠命令：<strong>80+</strong> 个 Command</li>
+        <li>服务模块：<strong>18+</strong> 个子系统</li>
+        <li>Utils 文件：<strong>564</strong> 个</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 启动流程 ==================== -->
+<div class="panel" id="startup">
+  <h2 class="section-title">🚀 启动流程</h2>
+
+  <div class="flow-diagram">
+    <div class="flow-box" style="border-color: var(--accent);">
+      <div class="title">① entrypoints/cli.tsx</div>
+      <div class="sub">最小启动面 · 环境变量副作用 · 快速路径分叉</div>
+    </div>
+    <div class="flow-arrow"></div>
+
+    <div class="flow-branch">
+      <div class="flow-box" style="border-color: var(--orange);">
+        <div class="title">⚡ 快速路径 (Fast Path)</div>
+        <div class="sub">--version · --dump-system-prompt<br>daemon · remote-control · bg<br>--worktree --tmux</div>
+      </div>
+      <div class="flow-box" style="border-color: var(--green);">
+        <div class="title">② 默认路径 → main.tsx</div>
+        <div class="sub">动态 import('../main.js')<br>startCapturingEarlyInput()</div>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+
+    <div class="flow-box">
+      <div class="title">③ main() — 初始化阶段</div>
+      <div class="sub">安全/信号处理 · argv 改写（cc://、SSH 等）<br>交互/非交互判定 · eagerLoadSettings()</div>
+    </div>
+    <div class="flow-arrow"></div>
+
+    <div class="flow-box">
+      <div class="title">④ run() — Commander 程序构建</div>
+      <div class="sub">注册全局选项与子命令：mcp、server、ssh、open、auth、plugin、doctor、update 等<br>program.parseAsync(process.argv)</div>
+    </div>
+    <div class="flow-arrow"></div>
+
+    <div class="flow-branch">
+      <div class="flow-box" style="border-color: var(--cyan);">
+        <div class="title">🖥️ 交互模式</div>
+        <div class="sub">showSetupScreens()<br>→ launchRepl()<br>→ &lt;App&gt;&lt;REPL/&gt;&lt;/App&gt;</div>
+      </div>
+      <div class="flow-box" style="border-color: var(--pink);">
+        <div class="title">📝 非交互模式</div>
+        <div class="sub">-p / --print / stream-json<br>直接 query 输出结果</div>
+      </div>
+      <div class="flow-box" style="border-color: var(--orange);">
+        <div class="title">🔌 子命令模式</div>
+        <div class="sub">mcp serve / server<br>ssh / auth / plugin 等</div>
+      </div>
+    </div>
+    <div class="flow-arrow"></div>
+
+    <div class="flow-box" style="border-color: var(--green);">
+      <div class="title">⑤ init() — 延迟初始化</div>
+      <div class="sub">enableConfigs · 远程设置加载 · 策略限制<br>遥测初始化 · 优雅关断注册 · 分析 Sink</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top: 20px;">
+    <h3><span class="icon">🔄</span> 初始化关键文件</h3>
+    <table>
+      <tr><th>文件</th><th>职责</th></tr>
+      <tr><td><code>entrypoints/cli.tsx</code></td><td>进程真正入口，最小依赖，快速路径分叉</td></tr>
+      <tr><td><code>main.tsx</code></td><td>CLI 全生命周期编排，Commander 树构建</td></tr>
+      <tr><td><code>entrypoints/init.ts</code></td><td>memoize 的异步初始化（配置、遥测、关断）</td></tr>
+      <tr><td><code>replLauncher.tsx</code></td><td>动态 import App + REPL，挂载 Ink 渲染</td></tr>
+      <tr><td><code>interactiveHelpers.tsx</code></td><td>Setup 屏幕、renderAndRun、错误退出</td></tr>
+      <tr><td><code>setup.ts</code></td><td>会话记忆、MCP 状态、遥测 Sink、团队同步</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== 分层设计 ==================== -->
+<div class="panel" id="layers">
+  <h2 class="section-title">🧩 分层设计详解</h2>
+
+  <div class="arch-svg-container">
+    <svg width="1100" height="720" viewBox="0 0 1100 720" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#6366f1"/>
+        </marker>
+        <marker id="arrowgray" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="#4b5563"/>
+        </marker>
+      </defs>
+
+      <!-- Entry Layer -->
+      <rect x="50" y="20" width="1000" height="70" rx="10" fill="rgba(124,58,237,0.12)" stroke="rgba(124,58,237,0.4)" stroke-width="1.5"/>
+      <text x="80" y="50" fill="#a78bfa" font-size="13" font-weight="700">入口层 (Entrypoints)</text>
+      <rect x="260" y="35" width="130" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="283" y="58" fill="#e2e8f0" font-size="11">cli.tsx (启动)</text>
+      <rect x="420" y="35" width="140" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="443" y="58" fill="#e2e8f0" font-size="11">main.tsx (编排)</text>
+      <rect x="590" y="35" width="170" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="607" y="58" fill="#e2e8f0" font-size="11">replLauncher.tsx (挂载)</text>
+      <rect x="790" y="35" width="120" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="815" y="58" fill="#e2e8f0" font-size="11">init.ts (初始化)</text>
+
+      <!-- Arrows down -->
+      <line x1="490" y1="71" x2="490" y2="110" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+      <line x1="675" y1="71" x2="550" y2="110" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+      <!-- UI Layer -->
+      <rect x="50" y="110" width="1000" height="100" rx="10" fill="rgba(37,99,235,0.12)" stroke="rgba(37,99,235,0.4)" stroke-width="1.5"/>
+      <text x="80" y="140" fill="#60a5fa" font-size="13" font-weight="700">界面层 (UI)</text>
+      <rect x="260" y="125" width="140" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="282" y="148" fill="#e2e8f0" font-size="11">REPL.tsx (主屏)</text>
+      <rect x="420" y="125" width="160" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="438" y="148" fill="#e2e8f0" font-size="11">components/ (组件库)</text>
+      <rect x="600" y="125" width="180" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="622" y="148" fill="#e2e8f0" font-size="11">ink/ (终端渲染引擎)</text>
+      <rect x="800" y="125" width="140" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="818" y="148" fill="#e2e8f0" font-size="11">hooks/ (React Hooks)</text>
+
+      <rect x="260" y="170" width="140" height="30" rx="5" fill="rgba(37,99,235,0.08)" stroke="rgba(37,99,235,0.2)"/>
+      <text x="278" y="190" fill="#60a5fa" font-size="10">keybindings/</text>
+      <rect x="420" y="170" width="160" height="30" rx="5" fill="rgba(37,99,235,0.08)" stroke="rgba(37,99,235,0.2)"/>
+      <text x="445" y="190" fill="#60a5fa" font-size="10">PromptInput · Messages</text>
+      <rect x="600" y="170" width="180" height="30" rx="5" fill="rgba(37,99,235,0.08)" stroke="rgba(37,99,235,0.2)"/>
+      <text x="615" y="190" fill="#60a5fa" font-size="10">reconciler · ScrollBox · Text</text>
+
+      <!-- State Layer -->
+      <rect x="50" y="230" width="1000" height="80" rx="10" fill="rgba(6,182,212,0.12)" stroke="rgba(6,182,212,0.4)" stroke-width="1.5"/>
+      <text x="80" y="260" fill="#22d3ee" font-size="13" font-weight="700">状态层 (State)</text>
+      <rect x="260" y="248" width="200" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="275" y="271" fill="#e2e8f0" font-size="11">AppStateStore (React 侧)</text>
+      <rect x="480" y="248" width="220" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="495" y="271" fill="#e2e8f0" font-size="11">bootstrap/state.ts (全局单例)</text>
+      <rect x="720" y="248" width="180" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="745" y="271" fill="#e2e8f0" font-size="11">context/ (React 上下文)</text>
+
+      <line x1="490" y1="210" x2="490" y2="230" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+      <!-- Business Layer -->
+      <rect x="50" y="330" width="1000" height="100" rx="10" fill="rgba(16,185,129,0.12)" stroke="rgba(16,185,129,0.4)" stroke-width="1.5"/>
+      <text x="80" y="360" fill="#34d399" font-size="13" font-weight="700">业务逻辑层</text>
+      <rect x="260" y="345" width="140" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="280" y="368" fill="#e2e8f0" font-size="11">tools/ (40+ 工具)</text>
+      <rect x="420" y="345" width="160" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="436" y="368" fill="#e2e8f0" font-size="11">commands/ (80+ 命令)</text>
+      <rect x="600" y="345" width="130" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="625" y="368" fill="#e2e8f0" font-size="11">plugins/ 插件</text>
+      <rect x="750" y="345" width="130" height="36" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="780" y="368" fill="#e2e8f0" font-size="11">skills/ 技能</text>
+
+      <rect x="260" y="390" width="620" height="30" rx="5" fill="rgba(16,185,129,0.08)" stroke="rgba(16,185,129,0.2)"/>
+      <text x="280" y="410" fill="#34d399" font-size="10">tools.ts (工具注册聚合) · commands.ts (命令注册聚合) · Tool.ts (统一类型契约) · context.ts (系统/用户上下文)</text>
+
+      <line x1="490" y1="310" x2="490" y2="330" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+      <!-- Services Layer -->
+      <rect x="50" y="440" width="1000" height="100" rx="10" fill="rgba(245,158,11,0.12)" stroke="rgba(245,158,11,0.4)" stroke-width="1.5"/>
+      <text x="80" y="470" fill="#fbbf24" font-size="13" font-weight="700">服务层 (Services)</text>
+      <rect x="200" y="458" width="110" height="32" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="218" y="479" fill="#e2e8f0" font-size="10">api/ (模型)</text>
+      <rect x="320" y="458" width="110" height="32" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="340" y="479" fill="#e2e8f0" font-size="10">mcp/ (协议)</text>
+      <rect x="440" y="458" width="110" height="32" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="455" y="479" fill="#e2e8f0" font-size="10">oauth/ (认证)</text>
+      <rect x="560" y="458" width="120" height="32" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="573" y="479" fill="#e2e8f0" font-size="10">analytics/ (分析)</text>
+      <rect x="690" y="458" width="120" height="32" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="705" y="479" fill="#e2e8f0" font-size="10">compact/ (压缩)</text>
+      <rect x="820" y="458" width="130" height="32" rx="6" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="838" y="479" fill="#e2e8f0" font-size="10">tools/ (执行层)</text>
+
+      <rect x="200" y="498" width="750" height="30" rx="5" fill="rgba(245,158,11,0.08)" stroke="rgba(245,158,11,0.2)"/>
+      <text x="220" y="518" fill="#fbbf24" font-size="10">lsp/ · plugins/ · policyLimits/ · remoteManagedSettings/ · settingsSync/ · teamMemorySync/ · tips/ · voice/ · SessionMemory/</text>
+
+      <line x1="490" y1="430" x2="490" y2="440" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+      <!-- Infrastructure Layer -->
+      <rect x="50" y="550" width="1000" height="100" rx="10" fill="rgba(239,68,68,0.12)" stroke="rgba(239,68,68,0.4)" stroke-width="1.5"/>
+      <text x="80" y="580" fill="#f87171" font-size="13" font-weight="700">基础设施层 (Utils)</text>
+      <rect x="200" y="568" width="100" height="28" rx="5" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="215" y="587" fill="#e2e8f0" font-size="10">permissions/</text>
+      <rect x="310" y="568" width="90" height="28" rx="5" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="330" y="587" fill="#e2e8f0" font-size="10">settings/</text>
+      <rect x="410" y="568" width="70" height="28" rx="5" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="427" y="587" fill="#e2e8f0" font-size="10">git/</text>
+      <rect x="490" y="568" width="80" height="28" rx="5" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="505" y="587" fill="#e2e8f0" font-size="10">model/</text>
+      <rect x="580" y="568" width="80" height="28" rx="5" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="596" y="587" fill="#e2e8f0" font-size="10">shell/</text>
+      <rect x="670" y="568" width="90" height="28" rx="5" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="680" y="587" fill="#e2e8f0" font-size="10">telemetry/</text>
+      <rect x="770" y="568" width="90" height="28" rx="5" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="782" y="587" fill="#e2e8f0" font-size="10">sandbox/</text>
+      <rect x="870" y="568" width="90" height="28" rx="5" fill="#1a1d27" stroke="#4b5563"/>
+      <text x="885" y="587" fill="#e2e8f0" font-size="10">swarm/</text>
+
+      <rect x="200" y="604" width="760" height="30" rx="5" fill="rgba(239,68,68,0.08)" stroke="rgba(239,68,68,0.2)"/>
+      <text x="220" y="624" fill="#f87171" font-size="10">hooks/ · plugins/ · processUserInput/ · secureStorage/ · powershell/ · computerUse/ · claudeInChrome/ · teleport/ · task/ · suggestions/</text>
+
+      <line x1="490" y1="540" x2="490" y2="550" stroke="#6366f1" stroke-width="1.5" marker-end="url(#arrowhead)"/>
+
+      <!-- External -->
+      <rect x="50" y="670" width="1000" height="40" rx="10" fill="rgba(100,100,100,0.12)" stroke="rgba(100,100,100,0.4)" stroke-width="1.5"/>
+      <text x="80" y="695" fill="#9ca3af" font-size="13" font-weight="700">外部依赖</text>
+      <text x="260" y="695" fill="#9ca3af" font-size="11">Anthropic API · MCP Servers · GitHub · Slack · OAuth Providers · LSP Servers · vendor/ripgrep</text>
+
+      <line x1="490" y1="650" x2="490" y2="670" stroke="#4b5563" stroke-width="1.5" marker-end="url(#arrowgray)"/>
+    </svg>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h3><span class="icon">🔗</span> 层间依赖关系</h3>
+      <ul>
+        <li><strong>入口层</strong> → 界面层：<code>replLauncher</code> 动态 import <code>App</code> + <code>REPL</code></li>
+        <li><strong>界面层</strong> ↔ 状态层：<code>useAppState</code> 订阅 + <code>useSetAppState</code> 更新</li>
+        <li><strong>界面层</strong> → 业务层：REPL 调用 <code>query()</code> 触发工具/命令</li>
+        <li><strong>业务层</strong> → 服务层：工具执行调 <code>api/claude.ts</code>、<code>mcp/client.ts</code></li>
+        <li><strong>所有层</strong> → 基础设施层：权限、设置、遥测被广泛引用</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">⚡</span> 循环依赖解耦策略</h3>
+      <ul>
+        <li><code>main.tsx</code> 对 <code>teammate</code> 使用 <strong><code>require()</code> 延迟加载</strong></li>
+        <li><code>tools.ts</code> 对 Team*/SendMessage 使用 <strong>lazy require</strong></li>
+        <li><code>feature('…')</code> 做 <strong>编译期条件裁剪</strong>（Bun bundler）</li>
+        <li><code>USER_TYPE === 'ant'</code> 控制 <strong>内部/外部功能分叉</strong></li>
+        <li><code>memoize()</code> 保护高频初始化路径避免重复执行</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== 工具系统 ==================== -->
+<div class="panel" id="tools">
+  <h2 class="section-title">🔧 工具系统 (Tools)</h2>
+
+  <div class="card">
+    <h3><span class="icon">🏛️</span> 工具架构设计</h3>
+    <p>所有工具通过 <code>buildTool(def)</code> 构建，共享统一的 <code>Tool</code> 类型契约。工具注册在 <code>tools.ts</code> 的 <code>getAllBaseTools()</code> 数组字面量中，辅以条件展开。</p>
+    <br>
+    <div class="flow-diagram" style="padding: 10px 0;">
+      <div class="flow-box"><div class="title">Tool 定义 (各 tools/ 子目录)</div><div class="sub">buildTool({ name, inputSchema, call, prompt, ... })</div></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box"><div class="title">getAllBaseTools() → tools.ts</div><div class="sub">环境/特性/USER_TYPE 条件组装数组</div></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box"><div class="title">getTools(permissionContext)</div><div class="sub">filterToolsByDenyRules → isEnabled() 过滤</div></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box"><div class="title">assembleToolPool()</div><div class="sub">内置工具 + MCP 工具 → uniqBy(name) 去重</div></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box"><div class="title">runToolUse() — 单次执行</div><div class="sub">parse → validate → PreHook → canUseTool → call() → PostHook</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">📋</span> 完整工具列表</h3>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background: #10b981;"></div> 文件操作</div>
+      <div class="legend-item"><div class="legend-dot" style="background: #3b82f6;"></div> 搜索/查看</div>
+      <div class="legend-item"><div class="legend-dot" style="background: #f59e0b;"></div> 执行/Shell</div>
+      <div class="legend-item"><div class="legend-dot" style="background: #ec4899;"></div> Agent/任务</div>
+      <div class="legend-item"><div class="legend-dot" style="background: #8b5cf6;"></div> MCP/扩展</div>
+      <div class="legend-item"><div class="legend-dot" style="background: #06b6d4;"></div> 交互/控制</div>
+      <div class="legend-item"><div class="legend-dot" style="background: #ef4444;"></div> 团队/协作</div>
+    </div>
+    <div class="tool-grid">
+      <div class="tool-item"><div class="name" style="color:#10b981">FileReadTool</div><div class="cat">读取文件内容</div></div>
+      <div class="tool-item"><div class="name" style="color:#10b981">FileWriteTool</div><div class="cat">写入文件</div></div>
+      <div class="tool-item"><div class="name" style="color:#10b981">FileEditTool</div><div class="cat">编辑文件（精确替换）</div></div>
+      <div class="tool-item"><div class="name" style="color:#10b981">NotebookEditTool</div><div class="cat">编辑 Jupyter Notebook</div></div>
+      <div class="tool-item"><div class="name" style="color:#3b82f6">GrepTool</div><div class="cat">正则搜索文件内容</div></div>
+      <div class="tool-item"><div class="name" style="color:#3b82f6">GlobTool</div><div class="cat">按模式查找文件</div></div>
+      <div class="tool-item"><div class="name" style="color:#3b82f6">LSPTool</div><div class="cat">语言服务器协议</div></div>
+      <div class="tool-item"><div class="name" style="color:#3b82f6">WebSearchTool</div><div class="cat">网络搜索</div></div>
+      <div class="tool-item"><div class="name" style="color:#3b82f6">WebFetchTool</div><div class="cat">抓取网页内容</div></div>
+      <div class="tool-item"><div class="name" style="color:#3b82f6">ToolSearchTool</div><div class="cat">搜索可用工具</div></div>
+      <div class="tool-item"><div class="name" style="color:#f59e0b">BashTool</div><div class="cat">执行 Bash 命令</div></div>
+      <div class="tool-item"><div class="name" style="color:#f59e0b">PowerShellTool</div><div class="cat">执行 PowerShell</div></div>
+      <div class="tool-item"><div class="name" style="color:#ec4899">AgentTool</div><div class="cat">启动子 Agent</div></div>
+      <div class="tool-item"><div class="name" style="color:#ec4899">TaskCreateTool</div><div class="cat">创建后台任务</div></div>
+      <div class="tool-item"><div class="name" style="color:#ec4899">TaskGetTool</div><div class="cat">获取任务状态</div></div>
+      <div class="tool-item"><div class="name" style="color:#ec4899">TaskListTool</div><div class="cat">列出所有任务</div></div>
+      <div class="tool-item"><div class="name" style="color:#ec4899">TaskUpdateTool</div><div class="cat">更新任务</div></div>
+      <div class="tool-item"><div class="name" style="color:#ec4899">TaskStopTool</div><div class="cat">停止任务</div></div>
+      <div class="tool-item"><div class="name" style="color:#ec4899">TaskOutputTool</div><div class="cat">获取任务输出</div></div>
+      <div class="tool-item"><div class="name" style="color:#8b5cf6">MCPTool</div><div class="cat">调用 MCP 工具</div></div>
+      <div class="tool-item"><div class="name" style="color:#8b5cf6">ListMcpResourcesTool</div><div class="cat">列出 MCP 资源</div></div>
+      <div class="tool-item"><div class="name" style="color:#8b5cf6">ReadMcpResourceTool</div><div class="cat">读取 MCP 资源</div></div>
+      <div class="tool-item"><div class="name" style="color:#8b5cf6">McpAuthTool</div><div class="cat">MCP 认证</div></div>
+      <div class="tool-item"><div class="name" style="color:#8b5cf6">SkillTool</div><div class="cat">执行技能</div></div>
+      <div class="tool-item"><div class="name" style="color:#06b6d4">AskUserQuestionTool</div><div class="cat">向用户提问</div></div>
+      <div class="tool-item"><div class="name" style="color:#06b6d4">TodoWriteTool</div><div class="cat">管理待办事项</div></div>
+      <div class="tool-item"><div class="name" style="color:#06b6d4">ConfigTool</div><div class="cat">修改配置</div></div>
+      <div class="tool-item"><div class="name" style="color:#06b6d4">BriefTool</div><div class="cat">简短模式</div></div>
+      <div class="tool-item"><div class="name" style="color:#06b6d4">EnterPlanModeTool</div><div class="cat">进入计划模式</div></div>
+      <div class="tool-item"><div class="name" style="color:#06b6d4">ExitPlanModeTool</div><div class="cat">退出计划模式</div></div>
+      <div class="tool-item"><div class="name" style="color:#06b6d4">EnterWorktreeTool</div><div class="cat">进入 Worktree</div></div>
+      <div class="tool-item"><div class="name" style="color:#06b6d4">ExitWorktreeTool</div><div class="cat">退出 Worktree</div></div>
+      <div class="tool-item"><div class="name" style="color:#06b6d4">SleepTool</div><div class="cat">等待/延迟</div></div>
+      <div class="tool-item"><div class="name" style="color:#06b6d4">SyntheticOutputTool</div><div class="cat">合成输出</div></div>
+      <div class="tool-item"><div class="name" style="color:#ef4444">SendMessageTool</div><div class="cat">发送消息给队友</div></div>
+      <div class="tool-item"><div class="name" style="color:#ef4444">TeamCreateTool</div><div class="cat">创建团队</div></div>
+      <div class="tool-item"><div class="name" style="color:#ef4444">TeamDeleteTool</div><div class="cat">删除团队</div></div>
+      <div class="tool-item"><div class="name" style="color:#ef4444">RemoteTriggerTool</div><div class="cat">远程触发</div></div>
+      <div class="tool-item"><div class="name" style="color:#f59e0b">ScheduleCronTool</div><div class="cat">定时任务调度</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">🔒</span> 权限模型（三层）</h3>
+    <table>
+      <tr><th>层级</th><th>机制</th><th>说明</th></tr>
+      <tr><td><strong>列表层</strong></td><td><code>filterToolsByDenyRules</code></td><td>deny 规则整工具级屏蔽，阻止工具出现在可用列表中</td></tr>
+      <tr><td><strong>运行时层</strong></td><td><code>hasPermissionsToUseTool</code></td><td>deny → ask → allow 规则链；sandbox 特例；classifier 分支</td></tr>
+      <tr><td><strong>Hook 层</strong></td><td><code>PreToolUse / PostToolUse</code></td><td>用户自定义 Hook 可覆盖权限决策（但 deny 规则不可被 allow 覆盖）</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== 命令系统 ==================== -->
+<div class="panel" id="commands">
+  <h2 class="section-title">⌨️ 命令系统 (Commands)</h2>
+
+  <div class="card">
+    <h3><span class="icon">🔄</span> 命令注册与发现流程</h3>
+    <div class="flow-diagram" style="padding: 10px 0;">
+      <div class="flow-branch">
+        <div class="flow-box"><div class="title">内置 COMMANDS()</div><div class="sub">静态 import + 条件展开</div></div>
+        <div class="flow-box"><div class="title">getSkills(cwd)</div><div class="sub">bundled · builtin · skillDir · plugin</div></div>
+        <div class="flow-box"><div class="title">getPluginCommands()</div><div class="sub">已安装插件的命令</div></div>
+        <div class="flow-box"><div class="title">getWorkflowCommands()</div><div class="sub">工作流脚本命令</div></div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box"><div class="title">loadAllCommands(cwd)</div><div class="sub">按优先级合并：bundled → builtinPlugin → skillDir → workflows → pluginCmds → pluginSkills → COMMANDS()</div></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box"><div class="title">getCommands(cwd)</div><div class="sub">meetsAvailabilityRequirement → isCommandEnabled → 合并 dynamicSkills</div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">📋</span> 主要内置命令分类</h3>
+    <table>
+      <tr><th>分类</th><th>命令</th></tr>
+      <tr><td><span class="highlight">会话管理</span></td><td><code>/clear</code> <code>/compact</code> <code>/resume</code> <code>/branch</code> <code>/rename</code> <code>/session</code> <code>/exit</code> <code>/rewind</code> <code>/export</code></td></tr>
+      <tr><td><span class="highlight">模型与配置</span></td><td><code>/model</code> <code>/config</code> <code>/effort</code> <code>/fast</code> <code>/theme</code> <code>/color</code> <code>/output-style</code> <code>/keybindings</code> <code>/vim</code></td></tr>
+      <tr><td><span class="highlight">权限与安全</span></td><td><code>/permissions</code> <code>/hooks</code> <code>/sandbox</code> <code>/privacy-settings</code> <code>/login</code> <code>/logout</code></td></tr>
+      <tr><td><span class="highlight">代码与开发</span></td><td><code>/diff</code> <code>/review</code> <code>/security-review</code> <code>/pr-comments</code> <code>/init</code> <code>/doctor</code></td></tr>
+      <tr><td><span class="highlight">扩展与集成</span></td><td><code>/mcp</code> <code>/plugin</code> <code>/skills</code> <code>/reload-plugins</code> <code>/ide</code> <code>/chrome</code> <code>/desktop</code></td></tr>
+      <tr><td><span class="highlight">信息与统计</span></td><td><code>/status</code> <code>/cost</code> <code>/stats</code> <code>/usage</code> <code>/files</code> <code>/context</code> <code>/help</code></td></tr>
+      <tr><td><span class="highlight">协作与任务</span></td><td><code>/tasks</code> <code>/plan</code> <code>/btw</code> <code>/memory</code> <code>/tag</code> <code>/agents</code></td></tr>
+      <tr><td><span class="highlight">账户与社交</span></td><td><code>/upgrade</code> <code>/extra-usage</code> <code>/feedback</code> <code>/passes</code> <code>/stickers</code> <code>/release-notes</code></td></tr>
+    </table>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">🛡️</span> 远程/桥接安全</h3>
+    <p>远程模式与桥接模式有各自的安全白名单（<code>REMOTE_SAFE_COMMANDS</code> / <code>BRIDGE_SAFE_COMMANDS</code>），仅允许通过审核的命令在非本地环境执行。</p>
+  </div>
+</div>
+
+<!-- ==================== 服务层 ==================== -->
+<div class="panel" id="services">
+  <h2 class="section-title">🌐 服务层 (Services)</h2>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h3><span class="icon">🤖</span> API / 模型调用 — api/</h3>
+      <ul>
+        <li><code>client.ts</code>：<strong>getAnthropicClient</strong> — 聚合 API Key / OAuth / Bedrock / Vertex</li>
+        <li><code>claude.ts</code>：<strong>queryModelWithStreaming</strong> — 主模型调用，含缓存控制与 usage 累计</li>
+        <li><code>sessionIngress.ts</code>：会话/OAuth 入站</li>
+        <li><code>filesApi.ts</code>：文件上传 API</li>
+        <li><code>withRetry.ts</code>：重试策略</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">🔌</span> MCP 协议 — mcp/</h3>
+      <ul>
+        <li><code>client.ts</code>：连接管理、工具/资源/命令拉取、工具调用</li>
+        <li><code>config.ts</code>：多来源配置合并（全局/项目/企业）</li>
+        <li><code>MCPConnectionManager.tsx</code>：React 侧重连、开关、状态同步</li>
+        <li>传输：Stdio / SSE / StreamableHTTP / WebSocket / InProcess</li>
+        <li><code>claudeai.ts</code>：Claude.ai 远程 MCP 代理</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">🔐</span> 认证 — oauth/</h3>
+      <ul>
+        <li><code>OAuthService</code>：PKCE 流程 + 本地回调服务</li>
+        <li><code>client.ts</code>：构建 Auth URL、exchange code、解析 scope</li>
+        <li>支持多组织、token 刷新、profile 获取</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">📊</span> 分析与遥测 — analytics/</h3>
+      <ul>
+        <li><code>logEvent</code>：事件入队 → Datadog + 一方日志</li>
+        <li>GrowthBook / Statsig：特性开关与实验</li>
+        <li><code>telemetry/</code>（utils）：OpenTelemetry、Perfetto、BigQuery</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">📦</span> 上下文压缩 — compact/</h3>
+      <ul>
+        <li><code>compact.ts</code>：完整压缩（保留摘要）</li>
+        <li><code>microCompact.ts</code>：微压缩（低开销）</li>
+        <li><code>autoCompact.ts</code>：自动触发压缩</li>
+        <li>与 API 侧 token 管理配合</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">⚡</span> 工具执行 — tools/</h3>
+      <ul>
+        <li><code>toolOrchestration.ts</code>：并发与分区调度</li>
+        <li><code>toolExecution.ts</code>：单次工具执行 + MCP 分派</li>
+        <li><code>StreamingToolExecutor.ts</code>：流式执行</li>
+        <li><code>toolHooks.ts</code>：前后置 Hook</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">🧠</span> 记忆系统</h3>
+      <ul>
+        <li><code>SessionMemory/</code>：会话级记忆</li>
+        <li><code>extractMemories/</code>：从对话提取 memory</li>
+        <li><code>teamMemorySync/</code>：团队记忆同步 + 密钥扫描</li>
+        <li><code>MagicDocs/</code>：Magic 文档</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">🔧</span> 其它服务</h3>
+      <ul>
+        <li><code>lsp/</code>：LSP 客户端/服务管理</li>
+        <li><code>plugins/</code>：插件安装与管理</li>
+        <li><code>policyLimits/</code>：组织策略</li>
+        <li><code>remoteManagedSettings/</code>：远程托管设置</li>
+        <li><code>voice*.ts</code>：语音录入 + STT</li>
+        <li><code>PromptSuggestion/</code>：投机补全建议</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== UI 与状态 ==================== -->
+<div class="panel" id="ui">
+  <h2 class="section-title">🖥️ UI 与状态管理</h2>
+
+  <div class="card">
+    <h3><span class="icon">🎨</span> 终端 UI 架构</h3>
+    <p>Claude Code 使用<strong>内嵌魔改版 Ink</strong>（非 npm 原版）作为终端 UI 框架，包含自定义 reconciler、Yoga 布局引擎、屏幕缓冲区、选区/搜索高亮、alt screen 等。</p>
+    <br>
+    <div class="flow-diagram" style="padding: 10px 0;">
+      <div class="flow-box"><div class="title">Node stdin (raw mode)</div><div class="sub">操作系统键盘输入</div></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box"><div class="title">ink/components/App.tsx</div><div class="sub">parseMultipleKeypresses → processKeysInBatch<br>discreteUpdates 批量处理</div></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-branch">
+        <div class="flow-box"><div class="title">KeybindingSetup</div><div class="sub">chord 拦截 → 全局快捷键<br>命令快捷键 → 滚动</div></div>
+        <div class="flow-box"><div class="title">useInput handlers</div><div class="sub">按注册顺序执行<br>stopImmediatePropagation</div></div>
+      </div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box"><div class="title">PromptInput</div><div class="sub">文本输入 · Vim 模式 · 历史 · 粘贴 · 补全</div></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box"><div class="title">REPL onSubmit → handlePromptSubmit</div><div class="sub">斜杠命令 / 普通文本 / 排队</div></div>
+      <div class="flow-arrow"></div>
+      <div class="flow-box" style="border-color: var(--accent)"><div class="title">query() 主循环</div><div class="sub">systemPrompt + userContext → API 流式调用 → onQueryEvent → 更新 UI</div></div>
+    </div>
+  </div>
+
+  <div class="grid grid-2">
+    <div class="card">
+      <h3><span class="icon">📱</span> 主要屏幕</h3>
+      <table>
+        <tr><th>屏幕</th><th>说明</th></tr>
+        <tr><td><code>REPL.tsx</code></td><td>主交互界面：消息列表、输入框、query 循环、权限对话框</td></tr>
+        <tr><td><code>ResumeConversation.tsx</code></td><td>恢复会话：读日志后进入 REPL</td></tr>
+        <tr><td><code>Doctor.tsx</code></td><td>诊断界面：配置/插件/沙箱检查</td></tr>
+      </table>
+      <br>
+      <h3><span class="icon">🧩</span> 关键组件</h3>
+      <ul>
+        <li><code>Messages</code> — 消息列表与渲染</li>
+        <li><code>PromptInput</code> — 用户输入框</li>
+        <li><code>PermissionRequest</code> — 权限请求 UI</li>
+        <li><code>FullscreenLayout</code> — 全屏布局</li>
+        <li><code>TaskListV2</code> — 后台任务列表</li>
+        <li><code>CostThresholdDialog</code> — 费用阈值提醒</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span class="icon">🗂️</span> 状态管理架构</h3>
+      <h4 style="color: var(--cyan); margin: 8px 0;">A. React 侧 — AppState</h4>
+      <ul>
+        <li><code>AppStateStore.ts</code>：大而全的 UI 快照类型</li>
+        <li><code>store.ts</code>：<code>createStore</code> — 轻量订阅式 store</li>
+        <li><code>AppState.tsx</code>：Provider + <code>useAppState(selector)</code></li>
+        <li>基于 <code>useSyncExternalStore</code> + <code>Object.is</code> 比较</li>
+      </ul>
+      <h4 style="color: var(--orange); margin: 12px 0 8px;">B. 进程级 — bootstrap/state.ts</h4>
+      <ul>
+        <li>与 React 分离的全局单例状态</li>
+        <li>sessionId、cwd、model、telemetry 等</li>
+        <li>通过 getter/setter 被 utils 广泛消费</li>
+      </ul>
+      <h4 style="color: var(--green); margin: 12px 0 8px;">C. React Context</h4>
+      <ul>
+        <li><code>notifications</code>、<code>mailbox</code>、<code>modal</code></li>
+        <li><code>overlay</code>、<code>stats</code>、<code>fpsMetrics</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3><span class="icon">🔄</span> REPL 交互循环</h3>
+    <table>
+      <tr><th>步骤</th><th>动作</th><th>关键代码</th></tr>
+      <tr><td>1</td><td>用户提交输入</td><td><code>PromptInput</code> → <code>onSubmit</code></td></tr>
+      <tr><td>2</td><td>输入分流</td><td>远程消息 / 投机接受 / <code>handlePromptSubmit</code></td></tr>
+      <tr><td>3</td><td>防并发</td><td><code>queryGuard.tryStart()</code>，已在跑则入队</td></tr>
+      <tr><td>4</td><td>组装上下文</td><td>systemPrompt + userContext + systemContext + toolUseContext</td></tr>
+      <tr><td>5</td><td>流式 query</td><td><code>for await (event of query({...}))</code></td></tr>
+      <tr><td>6</td><td>事件处理</td><td><code>onQueryEvent</code> 更新消息/工具状态/UI</td></tr>
+      <tr><td>7</td><td>轮次完成</td><td><code>resetLoadingState</code> + <code>onTurnComplete</code></td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ==================== 目录树 ==================== -->
+<div class="panel" id="tree">
+  <h2 class="section-title">📁 项目目录树</h2>
+
+  <div style="display:flex; gap:12px; margin-bottom:16px; flex-wrap:wrap;">
+    <button onclick="expandAll()" style="padding:6px 16px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:0.82rem;">全部展开</button>
+    <button onclick="collapseAll()" style="padding:6px 16px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text);cursor:pointer;font-size:0.82rem;">全部折叠</button>
+  </div>
+
+  <div class="card" style="padding:16px;">
+    <div class="tree-root" id="fileTree"></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+const treeData = [
+  { type:'section', label:'核心入口文件' },
+  { name:'entrypoints/', icon:'🚀', desc:'进程入口', badge:'入口层', badgeColor:'purple', children:[
+    { name:'cli.tsx', icon:'📄', desc:'CLI 启动（最小启动面，快速路径分叉）' },
+    { name:'init.ts', icon:'📄', desc:'延迟初始化（配置、遥测、优雅关断）' },
+  ]},
+  { name:'main.tsx', icon:'⚡', desc:'CLI 全生命周期编排，Commander 程序构建', badge:'核心', badgeColor:'purple' },
+  { name:'replLauncher.tsx', icon:'📄', desc:'动态 import App + REPL，挂载 Ink 渲染' },
+  { name:'interactiveHelpers.tsx', icon:'📄', desc:'Setup 屏幕、renderAndRun、错误退出' },
+  { name:'setup.ts', icon:'📄', desc:'会话初始化（memory、MCP、遥测 sink、团队同步）' },
+  { name:'Tool.ts', icon:'📐', desc:'工具统一类型契约（Tool / ToolDef / ToolPermissionContext）', badge:'类型', badgeColor:'cyan' },
+  { name:'tools.ts', icon:'🔧', desc:'工具注册聚合（getAllBaseTools / getTools / assembleToolPool）', badge:'聚合', badgeColor:'green' },
+  { name:'commands.ts', icon:'⌨️', desc:'命令注册聚合（getCommands / loadAllCommands）', badge:'聚合', badgeColor:'green' },
+  { name:'context.ts', icon:'📄', desc:'系统/用户上下文拼装（CLAUDE.md、git、memory）' },
+
+  { type:'section', label:'界面层 — Ink + React 终端 UI' },
+  { name:'screens/', icon:'🖥️', desc:'主要屏幕（3 个）', badge:'UI', badgeColor:'blue', children:[
+    { name:'REPL.tsx', icon:'💬', desc:'主交互界面 — 消息列表、输入框、query 循环' },
+    { name:'ResumeConversation.tsx', icon:'📄', desc:'恢复会话 — 读日志后进入 REPL' },
+    { name:'Doctor.tsx', icon:'🩺', desc:'诊断界面 — 配置/插件/沙箱检查' },
+  ]},
+  { name:'components/', icon:'🧩', desc:'共享 UI 组件（数百文件）', badge:'UI', badgeColor:'blue', children:[
+    { name:'App.tsx', icon:'📄', desc:'产品级根组件（FpsMetrics → Stats → AppState Provider）' },
+    { name:'Messages/', icon:'📁', desc:'消息列表与渲染' },
+    { name:'PromptInput/', icon:'📁', desc:'用户输入框（Vim / 历史 / 粘贴 / 补全）' },
+    { name:'Permission/', icon:'📁', desc:'权限请求 UI 组件' },
+    { name:'TaskList/', icon:'📁', desc:'后台任务列表 UI' },
+    { name:'MCP/', icon:'📁', desc:'MCP 相关 UI 组件' },
+    { name:'Wizard/', icon:'📁', desc:'向导/引导 UI' },
+    { name:'Sandbox/', icon:'📁', desc:'沙箱配置 UI' },
+    { name:'...', icon:'📁', desc:'更多组件模块' },
+  ]},
+  { name:'ink/', icon:'🎨', desc:'魔改 Ink 终端框架（内嵌版，非 npm 原版）', badge:'框架', badgeColor:'pink', children:[
+    { name:'ink.tsx', icon:'📄', desc:'核心 Ink 类 — FiberRoot、终端缓冲区、选区' },
+    { name:'reconciler.ts', icon:'📄', desc:'自定义 React reconciler' },
+    { name:'components/', icon:'📁', desc:'Box, Text, ScrollBox, Static 等基础组件' },
+    { name:'hooks/', icon:'📁', desc:'use-input, use-focus, use-stdout 等 Ink hooks' },
+    { name:'events/', icon:'📁', desc:'键盘/鼠标事件解析与派发' },
+    { name:'layout/', icon:'📁', desc:'Yoga 布局引擎集成' },
+  ]},
+
+  { type:'section', label:'状态管理' },
+  { name:'state/', icon:'🗂️', desc:'React 侧状态管理', badge:'状态', badgeColor:'cyan', children:[
+    { name:'AppStateStore.ts', icon:'📄', desc:'AppState 大而全的快照类型与默认值' },
+    { name:'store.ts', icon:'📄', desc:'createStore — 轻量订阅式 store（getState/setState/subscribe）' },
+    { name:'AppState.tsx', icon:'📄', desc:'Provider + useAppState(selector) via useSyncExternalStore' },
+    { name:'onChangeAppState.ts', icon:'📄', desc:'状态变更时的横切副作用' },
+  ]},
+  { name:'bootstrap/', icon:'🏗️', desc:'进程级全局状态（与 React 分离）', badge:'状态', badgeColor:'cyan', children:[
+    { name:'state.ts', icon:'📄', desc:'sessionId / cwd / model / telemetry 等 getter/setter 集合' },
+  ]},
+  { name:'context/', icon:'📦', desc:'React Context 定义', children:[
+    { name:'notifications.tsx', icon:'📄', desc:'通知队列上下文' },
+    { name:'mailbox.tsx', icon:'📄', desc:'邮箱消息上下文' },
+    { name:'stats.tsx', icon:'📄', desc:'统计指标上下文' },
+    { name:'...', icon:'📄', desc:'modal、overlay、fpsMetrics 等' },
+  ]},
+
+  { type:'section', label:'业务逻辑层 — 工具、命令、插件' },
+  { name:'tools/', icon:'🔧', desc:'40+ 工具实现（每个子目录一个工具）', badge:'40+ 工具', badgeColor:'green', children:[
+    { name:'AgentTool/', icon:'🤖', desc:'启动子 Agent（含 built-in: explore / generalPurpose / plan / verify）' },
+    { name:'BashTool/', icon:'💻', desc:'Bash 命令执行 — 权限、沙箱、只读检测' },
+    { name:'PowerShellTool/', icon:'💻', desc:'PowerShell 命令执行' },
+    { name:'FileReadTool/', icon:'📖', desc:'读取文件内容' },
+    { name:'FileWriteTool/', icon:'✏️', desc:'写入文件' },
+    { name:'FileEditTool/', icon:'🔀', desc:'精确字符串替换编辑' },
+    { name:'GrepTool/', icon:'🔍', desc:'基于 ripgrep 的正则搜索' },
+    { name:'GlobTool/', icon:'🔍', desc:'文件模式匹配' },
+    { name:'WebSearchTool/', icon:'🌐', desc:'网络搜索' },
+    { name:'WebFetchTool/', icon:'🌐', desc:'网页内容抓取' },
+    { name:'MCPTool/', icon:'🔌', desc:'调用 MCP 服务器工具' },
+    { name:'ListMcpResourcesTool/', icon:'🔌', desc:'列出 MCP 资源' },
+    { name:'ReadMcpResourceTool/', icon:'🔌', desc:'读取 MCP 资源' },
+    { name:'LSPTool/', icon:'📐', desc:'语言服务器协议交互' },
+    { name:'NotebookEditTool/', icon:'📓', desc:'编辑 Jupyter Notebook' },
+    { name:'TaskCreateTool/', icon:'📋', desc:'创建后台任务' },
+    { name:'TaskGetTool/', icon:'📋', desc:'获取任务状态' },
+    { name:'TaskListTool/', icon:'📋', desc:'列出所有任务' },
+    { name:'TaskUpdateTool/', icon:'📋', desc:'更新任务' },
+    { name:'TaskStopTool/', icon:'📋', desc:'停止任务' },
+    { name:'TaskOutputTool/', icon:'📋', desc:'获取任务输出' },
+    { name:'AskUserQuestionTool/', icon:'❓', desc:'向用户提问' },
+    { name:'TodoWriteTool/', icon:'✅', desc:'管理待办事项' },
+    { name:'SendMessageTool/', icon:'💬', desc:'发送消息给队友' },
+    { name:'TeamCreateTool/', icon:'👥', desc:'创建团队' },
+    { name:'TeamDeleteTool/', icon:'👥', desc:'删除团队' },
+    { name:'SkillTool/', icon:'⚡', desc:'执行技能' },
+    { name:'ConfigTool/', icon:'⚙️', desc:'修改配置' },
+    { name:'BriefTool/', icon:'📝', desc:'简短模式' },
+    { name:'EnterPlanModeTool/', icon:'📋', desc:'进入计划模式' },
+    { name:'ExitPlanModeTool/', icon:'📋', desc:'退出计划模式' },
+    { name:'EnterWorktreeTool/', icon:'🌿', desc:'进入 Git Worktree' },
+    { name:'ExitWorktreeTool/', icon:'🌿', desc:'退出 Git Worktree' },
+    { name:'RemoteTriggerTool/', icon:'📡', desc:'远程触发' },
+    { name:'ScheduleCronTool/', icon:'⏰', desc:'定时任务调度' },
+    { name:'ToolSearchTool/', icon:'🔍', desc:'搜索可用工具' },
+    { name:'SyntheticOutputTool/', icon:'📤', desc:'合成输出' },
+    { name:'shared/', icon:'📁', desc:'工具共享逻辑与辅助函数' },
+    { name:'testing/', icon:'📁', desc:'测试用权限工具' },
+  ]},
+  { name:'commands/', icon:'⌨️', desc:'80+ 斜杠命令', badge:'80+ 命令', badgeColor:'orange', children:[
+    { name:'mcp/', icon:'🔌', desc:'MCP 服务器管理' },
+    { name:'model/', icon:'🤖', desc:'AI 模型选择与切换' },
+    { name:'compact/', icon:'📦', desc:'上下文压缩' },
+    { name:'config/', icon:'⚙️', desc:'配置面板' },
+    { name:'permissions/', icon:'🔒', desc:'权限规则管理' },
+    { name:'resume/', icon:'🔄', desc:'恢复先前对话' },
+    { name:'memory/', icon:'🧠', desc:'Claude memory 文件编辑' },
+    { name:'plugin/', icon:'🔌', desc:'插件管理' },
+    { name:'skills/', icon:'⚡', desc:'查看可用技能' },
+    { name:'review/', icon:'👁️', desc:'PR 评审' },
+    { name:'diff/', icon:'📊', desc:'未提交变更 diff' },
+    { name:'doctor/', icon:'🩺', desc:'安装与设置诊断' },
+    { name:'hooks/', icon:'🪝', desc:'Hook 配置展示' },
+    { name:'init/', icon:'🚀', desc:'初始化 CLAUDE.md' },
+    { name:'tasks/', icon:'📋', desc:'后台任务管理' },
+    { name:'voice/', icon:'🎤', desc:'语音输入（条件加载）' },
+    { name:'bridge/', icon:'🌉', desc:'Bridge 模式' },
+    { name:'clear/', icon:'🧹', desc:'清空对话历史' },
+    { name:'cost/', icon:'💰', desc:'当前会话费用' },
+    { name:'export/', icon:'📤', desc:'导出对话' },
+    { name:'help/', icon:'❓', desc:'帮助与命令列表' },
+    { name:'status/', icon:'📊', desc:'版本、模型、账号状态' },
+    { name:'theme/', icon:'🎨', desc:'主题切换' },
+    { name:'vim/', icon:'📝', desc:'Vim 模式切换' },
+    { name:'...', icon:'📁', desc:'更多命令（feedback / login / logout / upgrade 等）' },
+  ]},
+  { name:'plugins/', icon:'🔌', desc:'插件系统入口', children:[
+    { name:'bundled/', icon:'📁', desc:'内置捆绑插件' },
+  ]},
+  { name:'skills/', icon:'⚡', desc:'技能系统', children:[
+    { name:'bundled/', icon:'📁', desc:'内置捆绑技能' },
+  ]},
+  { name:'hooks/', icon:'🪝', desc:'应用级 React Hooks（IDE、语音、插件推荐等）' },
+  { name:'keybindings/', icon:'⌨️', desc:'快捷键系统（KeybindingProviderSetup / chord 拦截）' },
+
+  { type:'section', label:'服务层 — 18+ 子系统' },
+  { name:'services/', icon:'🌐', desc:'服务子系统集合', badge:'18+ 服务', badgeColor:'orange', children:[
+    { name:'api/', icon:'🤖', desc:'Anthropic API 客户端、模型调用、流式请求', badge:'核心', badgeColor:'purple', children:[
+      { name:'client.ts', icon:'📄', desc:'getAnthropicClient — 聚合 API Key / OAuth / Bedrock / Vertex' },
+      { name:'claude.ts', icon:'📄', desc:'queryModelWithStreaming — 主模型调用层' },
+      { name:'sessionIngress.ts', icon:'📄', desc:'会话/OAuth 入站' },
+      { name:'filesApi.ts', icon:'📄', desc:'文件上传 API' },
+      { name:'withRetry.ts', icon:'📄', desc:'重试策略' },
+      { name:'...', icon:'📄', desc:'errors / usage / logging / bootstrap 等' },
+    ]},
+    { name:'mcp/', icon:'🔌', desc:'MCP 协议实现（26 文件）', badge:'核心', badgeColor:'purple', children:[
+      { name:'client.ts', icon:'📄', desc:'连接管理 / 工具拉取 / 调用 / 重连' },
+      { name:'config.ts', icon:'📄', desc:'多来源配置合并（全局/项目/企业）' },
+      { name:'MCPConnectionManager.tsx', icon:'📄', desc:'React 侧重连、开关、状态同步' },
+      { name:'types.ts', icon:'📄', desc:'McpServerConfig / ConfigScope / Transport 类型' },
+      { name:'claudeai.ts', icon:'📄', desc:'Claude.ai 远程 MCP 代理' },
+      { name:'InProcessTransport.ts', icon:'📄', desc:'进程内传输' },
+      { name:'...', icon:'📄', desc:'auth / elicitation / officialRegistry 等' },
+    ]},
+    { name:'oauth/', icon:'🔐', desc:'OAuth 2.0 + PKCE 认证', children:[
+      { name:'index.ts', icon:'📄', desc:'OAuthService — PKCE 流程 + 本地回调' },
+      { name:'client.ts', icon:'📄', desc:'buildAuthUrl / exchangeCode / parseScopes' },
+      { name:'...', icon:'📄', desc:'auth-code-listener / crypto / types' },
+    ]},
+    { name:'analytics/', icon:'📊', desc:'事件分析与特性开关（9 文件）', children:[
+      { name:'index.ts', icon:'📄', desc:'logEvent — 事件入队' },
+      { name:'sink.ts', icon:'📄', desc:'initializeAnalyticsSink — Datadog + 一方日志' },
+      { name:'growthbook.ts', icon:'📄', desc:'GrowthBook/Statsig 特性开关' },
+      { name:'...', icon:'📄', desc:'config / sinkKillswitch 等' },
+    ]},
+    { name:'compact/', icon:'📦', desc:'上下文压缩（15 文件）', children:[
+      { name:'compact.ts', icon:'📄', desc:'完整压缩（保留摘要）' },
+      { name:'microCompact.ts', icon:'📄', desc:'微压缩（低开销）' },
+      { name:'autoCompact.ts', icon:'📄', desc:'自动触发压缩' },
+    ]},
+    { name:'tools/', icon:'⚡', desc:'工具编排与执行', children:[
+      { name:'toolOrchestration.ts', icon:'📄', desc:'runTools — 并发与分区调度' },
+      { name:'toolExecution.ts', icon:'📄', desc:'runToolUse — 单次执行 + MCP 分派' },
+      { name:'StreamingToolExecutor.ts', icon:'📄', desc:'流式工具执行' },
+      { name:'toolHooks.ts', icon:'📄', desc:'PreToolUse / PostToolUse Hook' },
+    ]},
+    { name:'lsp/', icon:'📐', desc:'语言服务器客户端与管理' },
+    { name:'plugins/', icon:'🔌', desc:'插件安装与管理' },
+    { name:'policyLimits/', icon:'🏛️', desc:'组织策略限制拉取与缓存' },
+    { name:'remoteManagedSettings/', icon:'☁️', desc:'远程托管设置同步' },
+    { name:'settingsSync/', icon:'🔄', desc:'用户设置与后端同步' },
+    { name:'teamMemorySync/', icon:'🧠', desc:'团队记忆同步 + 密钥扫描' },
+    { name:'SessionMemory/', icon:'🧠', desc:'会话级记忆' },
+    { name:'extractMemories/', icon:'🧠', desc:'从对话提取 memory' },
+    { name:'PromptSuggestion/', icon:'💡', desc:'投机式补全建议' },
+    { name:'MagicDocs/', icon:'📚', desc:'Magic 文档' },
+    { name:'AgentSummary/', icon:'📝', desc:'Agent 摘要' },
+    { name:'tips/', icon:'💡', desc:'提示文案注册与调度' },
+    { name:'voice*.ts', icon:'🎤', desc:'语音录入 + WebSocket STT' },
+    { name:'...', icon:'📄', desc:'rateLimits / tokenEstimation / vcr / notifier 等' },
+  ]},
+
+  { type:'section', label:'基础设施层 — utils/ (564 文件)' },
+  { name:'utils/', icon:'🔩', desc:'基础设施与横切关注点', badge:'564 文件', badgeColor:'red', children:[
+    { name:'permissions/', icon:'🔒', desc:'权限规则解析、模式、bypass、bash 分类、路径校验' },
+    { name:'settings/', icon:'⚙️', desc:'设置合并、校验、变更检测、MDM 策略', children:[
+      { name:'mdm/', icon:'📁', desc:'移动设备管理策略' },
+    ]},
+    { name:'git/', icon:'📂', desc:'.gitignore 解析、git 文件系统、配置解析' },
+    { name:'model/', icon:'🤖', desc:'模型别名、提供商、能力、校验、Bedrock' },
+    { name:'shell/', icon:'💻', desc:'Bash/PowerShell 提供者、只读命令校验' },
+    { name:'plugins/', icon:'🔌', desc:'插件加载、市场、MCP 与插件集成' },
+    { name:'hooks/', icon:'🪝', desc:'Hooks 配置、执行（shell/HTTP/agent）、注册、SSRF 防护' },
+    { name:'swarm/', icon:'👥', desc:'多队友/终端后端（Tmux / iTerm / 进程内）、权限桥接' },
+    { name:'telemetry/', icon:'📊', desc:'日志、事件、Perfetto、BigQuery、会话追踪' },
+    { name:'sandbox/', icon:'🏖️', desc:'沙箱适配器与策略状态' },
+    { name:'secureStorage/', icon:'🔐', desc:'密钥链/明文/回退存储' },
+    { name:'processUserInput/', icon:'⌨️', desc:'用户输入处理（processSlashCommand / processBashCommand）' },
+    { name:'suggestions/', icon:'💡', desc:'补全（目录、历史、命令、Slack 频道）' },
+    { name:'computerUse/', icon:'🖱️', desc:'Computer Use 工具链路（executor、MCP、热键）' },
+    { name:'claudeInChrome/', icon:'🌐', desc:'Chrome 集成、MCP、渲染' },
+    { name:'task/', icon:'📋', desc:'任务输出、磁盘输出、SDK 进度' },
+    { name:'teleport/', icon:'🚀', desc:'远程环境与 git bundle' },
+    { name:'nativeInstaller/', icon:'📥', desc:'原生安装、下载、包管理器、锁文件' },
+    { name:'powershell/', icon:'💻', desc:'PowerShell 解析与安全' },
+    { name:'todo/', icon:'✅', desc:'待办事项类型定义' },
+    { name:'ultraplan/', icon:'📋', desc:'UltraPlan 相关会话/关键词' },
+    { name:'...', icon:'📄', desc:'session / messages / terminal / theme / token / auth / ide 等大量顶层工具文件' },
+  ]},
+
+  { type:'section', label:'其它功能子系统' },
+  { name:'types/', icon:'📐', desc:'全局类型定义（消息、ID、权限等）' },
+  { name:'constants/', icon:'📌', desc:'常量（工具分组、预设等）' },
+  { name:'migrations/', icon:'🔄', desc:'设置与模型迁移脚本' },
+  { name:'remote/', icon:'📡', desc:'远程会话（RemoteSessionManager）' },
+  { name:'server/', icon:'🖥️', desc:'直连会话、解析 cc:// URL' },
+  { name:'coordinator/', icon:'🎯', desc:'协调器模式' },
+  { name:'assistant/', icon:'🤖', desc:'Assistant 子命令' },
+  { name:'buddy/', icon:'🤝', desc:'Buddy 功能' },
+  { name:'bridge/', icon:'🌉', desc:'Bridge 模式（IDE ↔ CLI）' },
+  { name:'daemon/', icon:'👻', desc:'守护进程' },
+  { name:'tasks/', icon:'📋', desc:'后台任务子系统' },
+  { name:'voice/', icon:'🎤', desc:'语音输入模块' },
+  { name:'vim/', icon:'📝', desc:'Vim 模式集成' },
+];
+
+function renderTree(items, container, depth = 0) {
+  items.forEach(item => {
+    if (item.type === 'section') {
+      if (depth === 0) {
+        const sep = document.createElement('div');
+        sep.className = 'tree-separator';
+        container.appendChild(sep);
+        const hdr = document.createElement('div');
+        hdr.className = 'tree-section-header';
+        hdr.textContent = item.label;
+        container.appendChild(hdr);
+      }
+      return;
+    }
+
+    const node = document.createElement('div');
+    node.className = 'tree-node';
+
+    const row = document.createElement('div');
+    row.className = 'tree-row';
+
+    for (let i = 0; i < depth; i++) {
+      const indent = document.createElement('span');
+      indent.className = 'tree-indent';
+      row.appendChild(indent);
+    }
+
+    const hasChildren = item.children && item.children.length > 0;
+    const isDir = item.name.endsWith('/') || hasChildren;
+
+    const toggle = document.createElement('span');
+    toggle.className = 'tree-toggle' + (hasChildren ? ' open' : ' leaf');
+    toggle.textContent = '▶';
+    row.appendChild(toggle);
+
+    const icon = document.createElement('span');
+    icon.className = 'tree-icon';
+    icon.textContent = item.icon || (isDir ? '📁' : '📄');
+    row.appendChild(icon);
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'tree-name ' + (isDir ? 'is-dir' : 'is-file');
+    nameSpan.textContent = item.name;
+    row.appendChild(nameSpan);
+
+    if (item.badge) {
+      const badge = document.createElement('span');
+      badge.className = 'tree-badge tree-badge-' + (item.badgeColor || 'blue');
+      badge.textContent = item.badge;
+      row.appendChild(badge);
+    }
+
+    if (item.desc) {
+      const desc = document.createElement('span');
+      desc.className = 'tree-desc';
+      desc.textContent = item.desc;
+      row.appendChild(desc);
+    }
+
+    node.appendChild(row);
+
+    if (hasChildren) {
+      const childContainer = document.createElement('div');
+      childContainer.className = 'tree-children';
+      renderTree(item.children, childContainer, depth + 1);
+      node.appendChild(childContainer);
+
+      const toggleHandler = () => {
+        const isOpen = !childContainer.classList.contains('collapsed');
+        childContainer.classList.toggle('collapsed', isOpen);
+        toggle.classList.toggle('open', !isOpen);
+      };
+      toggle.addEventListener('click', (e) => { e.stopPropagation(); toggleHandler(); });
+      row.addEventListener('dblclick', toggleHandler);
+      row.style.cursor = 'pointer';
+    }
+
+    container.appendChild(node);
+  });
+}
+
+function expandAll() {
+  document.querySelectorAll('.tree-children').forEach(el => el.classList.remove('collapsed'));
+  document.querySelectorAll('.tree-toggle:not(.leaf)').forEach(el => el.classList.add('open'));
+}
+function collapseAll() {
+  document.querySelectorAll('.tree-children').forEach(el => el.classList.add('collapsed'));
+  document.querySelectorAll('.tree-toggle:not(.leaf)').forEach(el => el.classList.remove('open'));
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderTree(treeData, document.getElementById('fileTree'));
+});
+</script>
+
+<div style="text-align: center; padding: 30px; color: var(--text-dim); font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 40px;">
+  Claude Code v2.1.88 架构分析 · 从 source map 还原 · 仅供研究
+</div>
+
+</body>
+</html>
